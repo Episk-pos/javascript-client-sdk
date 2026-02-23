@@ -112,9 +112,9 @@ export class Channel {
    */
   get displayName(): string | undefined {
     return this.type === "SavedMessages"
-      ? this.user?.username
+      ? this.user?.displayName
       : this.type === "DirectMessage"
-        ? this.recipient?.username
+        ? this.recipient?.displayName
         : this.name;
   }
 
