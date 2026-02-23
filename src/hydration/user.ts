@@ -20,6 +20,7 @@ export type HydratedUser = {
 
   online: boolean;
   privileged: boolean;
+  friendOnlyDms: boolean;
 
   badges: UserBadges;
   flags: UserFlags;
@@ -33,7 +34,9 @@ export const userHydration: Hydrate<APIUser, HydratedUser> = {
   keyMapping: {
     _id: "id",
     display_name: "displayName",
-  },
+    // Will be in stoat-api once regenerated from updated backend OpenAPI spec
+    friend_only_dms: "friendOnlyDms",
+  } as any,
   functions: {
     id: (user) => user._id,
     username: (user) => user.username,
@@ -44,6 +47,7 @@ export const userHydration: Hydrate<APIUser, HydratedUser> = {
 
     online: (user) => user.online!,
     privileged: (user) => user.privileged,
+    friendOnlyDms: (user) => (user as any).friend_only_dms ?? false,
 
     badges: (user) => user.badges!,
     flags: (user) => user.flags!,

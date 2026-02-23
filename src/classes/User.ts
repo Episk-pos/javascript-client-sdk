@@ -119,6 +119,13 @@ export class User {
   }
 
   /**
+   * Whether this user only accepts DMs from friends
+   */
+  get friendOnlyDms(): boolean {
+    return this.#collection.getUnderlyingObject(this.id).friendOnlyDms;
+  }
+
+  /**
    * Flags
    */
   get flags(): number {
@@ -187,7 +194,6 @@ export class User {
    * Permissions against this user
    */
   get permission(): number {
-    let permissions = 0;
     switch (this.relationship) {
       case "Friend":
       case "User":
@@ -195,11 +201,18 @@ export class User {
       case "Blocked":
       case "BlockedOther":
         return UserPermission.Access;
-      case "Incoming":
-      case "Outgoing":
-        permissions = UserPermission.Access;
     }
 
+    // Base permissions for non-friend, non-blocked users
+    let permissions =
+      UserPermission.Access | UserPermission.ViewProfile;
+
+    // Grant SendMessage unless target restricts DMs to friends
+    if (!this.friendOnlyDms) {
+      permissions |= UserPermission.SendMessage;
+    }
+
+    // Bots with mutual connection always get SendMessage
     if (
       this.#collection.client.channels.find(
         (channel) =>
@@ -213,8 +226,6 @@ export class User {
       if (this.#collection.client.user?.bot || this.bot) {
         permissions |= UserPermission.SendMessage;
       }
-
-      permissions |= UserPermission.Access | UserPermission.ViewProfile;
     }
 
     return permissions;
