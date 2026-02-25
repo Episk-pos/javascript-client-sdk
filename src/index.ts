@@ -5,6 +5,13 @@ export * from "./classes/index.js";
 export * from "./collections/index.js";
 export { ConnectionState, EventClient } from "./events/EventClient.js";
 export { BotFlags } from "./hydration/bot.js";
+export type {
+  APIScheduledEvent,
+  DataCreateScheduledEvent,
+  DataEditScheduledEvent,
+  ScheduledEventEntityType,
+  ScheduledEventStatus,
+} from "./hydration/scheduledEvent.js";
 export { ServerFlags } from "./hydration/server.js";
 export { UserBadges, UserFlags } from "./hydration/user.js";
 export * from "./lib/regex.js";

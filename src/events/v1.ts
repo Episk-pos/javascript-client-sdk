@@ -25,6 +25,7 @@ import { MessageEmbed } from "../classes/MessageEmbed.js";
 import { ServerRole } from "../classes/ServerRole.js";
 import { VoiceParticipant } from "../classes/VoiceParticipant.js";
 import { hydrate } from "../hydration/index.js";
+import type { APIScheduledEvent } from "../hydration/scheduledEvent.js";
 
 /**
  * Version 1 of the events protocol
@@ -162,6 +163,23 @@ type ServerMessage =
   | { type: "UserPlatformWipe"; user_id: string; flags: number }
   | ({ type: "EmojiCreate" } & Emoji)
   | { type: "EmojiDelete"; id: string }
+  | ({ type: "ScheduledEventCreate" } & APIScheduledEvent)
+  | {
+      type: "ScheduledEventUpdate";
+      id: string;
+      data: Partial<APIScheduledEvent>;
+    }
+  | { type: "ScheduledEventDelete"; id: string }
+  | {
+      type: "ScheduledEventUserAdd";
+      id: string;
+      user_id: string;
+    }
+  | {
+      type: "ScheduledEventUserRemove";
+      id: string;
+      user_id: string;
+    }
   | ({
       type: "Auth";
     } & (
@@ -942,6 +960,64 @@ export async function handleEvent(
         const emoji = client.emojis.getUnderlyingObject(event.id);
         client.emit("emojiDelete", emoji);
         client.emojis.delete(event.id);
+      }
+      break;
+    }
+    case "ScheduledEventCreate": {
+      if (!client.scheduledEvents.has(event._id)) {
+        client.scheduledEvents.getOrCreate(event._id, event, true);
+      }
+      break;
+    }
+    case "ScheduledEventUpdate": {
+      const scheduledEvent = client.scheduledEvents.getOrPartial(event.id);
+      if (scheduledEvent) {
+        const previousEvent = {
+          ...client.scheduledEvents.getUnderlyingObject(event.id),
+        };
+
+        const changes = hydrate(
+          "scheduledEvent",
+          event.data as never,
+          client,
+          false,
+        );
+
+        client.scheduledEvents.updateUnderlyingObject(event.id, changes);
+        client.emit("scheduledEventUpdate", scheduledEvent, previousEvent);
+      }
+      break;
+    }
+    case "ScheduledEventDelete": {
+      if (client.scheduledEvents.getOrPartial(event.id)) {
+        const scheduledEvent =
+          client.scheduledEvents.getUnderlyingObject(event.id);
+        client.emit("scheduledEventDelete", scheduledEvent);
+        client.scheduledEvents.delete(event.id);
+      }
+      break;
+    }
+    case "ScheduledEventUserAdd": {
+      const scheduledEvent = client.scheduledEvents.getOrPartial(event.id);
+      if (scheduledEvent) {
+        const current = scheduledEvent.interestedCount;
+        client.scheduledEvents.updateUnderlyingObject(
+          event.id,
+          "interestedCount" as never,
+          (current + 1) as never,
+        );
+      }
+      break;
+    }
+    case "ScheduledEventUserRemove": {
+      const scheduledEvent = client.scheduledEvents.getOrPartial(event.id);
+      if (scheduledEvent) {
+        const current = scheduledEvent.interestedCount;
+        client.scheduledEvents.updateUnderlyingObject(
+          event.id,
+          "interestedCount" as never,
+          Math.max(0, current - 1) as never,
+        );
       }
       break;
     }

@@ -6,6 +6,7 @@ export { ChannelUnreadCollection } from "./ChannelUnreadCollection.js";
 export { ChannelWebhookCollection } from "./ChannelWebhookCollection.js";
 export { EmojiCollection } from "./EmojiCollection.js";
 export { MessageCollection } from "./MessageCollection.js";
+export { ScheduledEventCollection } from "./ScheduledEventCollection.js";
 export { ServerCollection } from "./ServerCollection.js";
 export { ServerMemberCollection } from "./ServerMemberCollection.js";
 export { SessionCollection } from "./SessionCollection.js";

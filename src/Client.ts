@@ -8,6 +8,7 @@ import type { DataLogin, RevoltConfig, Role } from "stoat-api";
 import type { Channel } from "./classes/Channel.js";
 import type { Emoji } from "./classes/Emoji.js";
 import type { Message } from "./classes/Message.js";
+import type { ScheduledEvent } from "./classes/ScheduledEvent.js";
 import type { Server } from "./classes/Server.js";
 import type { ServerMember } from "./classes/ServerMember.js";
 import type { User } from "./classes/User.js";
@@ -18,6 +19,7 @@ import { ChannelUnreadCollection } from "./collections/ChannelUnreadCollection.j
 import { ChannelWebhookCollection } from "./collections/ChannelWebhookCollection.js";
 import { EmojiCollection } from "./collections/EmojiCollection.js";
 import { MessageCollection } from "./collections/MessageCollection.js";
+import { ScheduledEventCollection } from "./collections/ScheduledEventCollection.js";
 import { ServerCollection } from "./collections/ServerCollection.js";
 import { ServerMemberCollection } from "./collections/ServerMemberCollection.js";
 import { SessionCollection } from "./collections/SessionCollection.js";
@@ -31,6 +33,7 @@ import { ProtocolV1, handleEvent } from "./events/v1.js";
 import type { HydratedChannel } from "./hydration/channel.js";
 import type { HydratedEmoji } from "./hydration/emoji.js";
 import type { HydratedMessage } from "./hydration/message.js";
+import type { HydratedScheduledEvent } from "./hydration/scheduledEvent.js";
 import type { HydratedServer } from "./hydration/server.js";
 import type { HydratedServerMember } from "./hydration/serverMember.js";
 import type { HydratedUser } from "./hydration/user.js";
@@ -94,6 +97,13 @@ export type Events = {
 
   emojiCreate: [emoji: Emoji];
   emojiDelete: [emoji: HydratedEmoji];
+
+  scheduledEventCreate: [event: ScheduledEvent];
+  scheduledEventUpdate: [
+    event: ScheduledEvent,
+    previousEvent: HydratedScheduledEvent,
+  ];
+  scheduledEventDelete: [event: HydratedScheduledEvent];
 };
 
 /**
@@ -172,6 +182,7 @@ export class Client extends AsyncEventEmitter<Events> {
   readonly channelWebhooks;
   readonly emojis;
   readonly messages;
+  readonly scheduledEvents;
   readonly servers;
   readonly serverMembers;
   readonly sessions;
@@ -254,6 +265,7 @@ export class Client extends AsyncEventEmitter<Events> {
     this.channelWebhooks = new ChannelWebhookCollection(this);
     this.emojis = new EmojiCollection(this);
     this.messages = new MessageCollection(this);
+    this.scheduledEvents = new ScheduledEventCollection(this);
     this.servers = new ServerCollection(this);
     this.serverMembers = new ServerMemberCollection(this);
     this.sessions = new SessionCollection(this);

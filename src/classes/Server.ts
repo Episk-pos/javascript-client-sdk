@@ -20,6 +20,10 @@ import { decodeTime } from "ulid";
 
 import type { ServerCollection } from "../collections/ServerCollection.js";
 import { hydrate } from "../hydration/index.js";
+import type {
+  APIScheduledEvent,
+  DataCreateScheduledEvent,
+} from "../hydration/scheduledEvent.js";
 import type { ServerFlags } from "../hydration/server.js";
 import {
   bitwiseAndEq,
@@ -31,6 +35,7 @@ import type { Channel } from "./Channel.js";
 import type { Emoji } from "./Emoji.js";
 import type { File } from "./File.js";
 import { ChannelInvite } from "./Invite.js";
+import type { ScheduledEvent } from "./ScheduledEvent.js";
 import { ServerBan } from "./ServerBan.js";
 import { ServerMember } from "./ServerMember.js";
 import { ServerRole } from "./ServerRole.js";
@@ -831,5 +836,48 @@ export class Server {
    */
   async deleteEmoji(emojiId: string): Promise<void> {
     await this.#collection.client.api.delete(`/custom/emoji/${emojiId}`);
+  }
+
+  /**
+   * Fetch all scheduled events for this server
+   * @returns Array of scheduled events
+   */
+  async fetchScheduledEvents(): Promise<ScheduledEvent[]> {
+    const events = (await this.#collection.client.api.get(
+      `/servers/${this.id as ""}/events` as never,
+    )) as APIScheduledEvent[];
+
+    return events.map((event) =>
+      this.#collection.client.scheduledEvents.getOrCreate(event._id, event),
+    );
+  }
+
+  /**
+   * Create a scheduled event
+   * @param data Scheduled event creation data
+   * @returns The newly-created scheduled event
+   */
+  async createScheduledEvent(
+    data: DataCreateScheduledEvent,
+  ): Promise<ScheduledEvent> {
+    const event = (await this.#collection.client.api.post(
+      `/servers/${this.id as ""}/events` as never,
+      data as never,
+    )) as APIScheduledEvent;
+
+    return this.#collection.client.scheduledEvents.getOrCreate(
+      event._id,
+      event,
+      true,
+    );
+  }
+
+  /**
+   * All cached scheduled events for this server
+   */
+  get scheduledEvents(): ScheduledEvent[] {
+    return this.#collection.client.scheduledEvents.filter(
+      (event) => event.serverId === this.id,
+    );
   }
 }
