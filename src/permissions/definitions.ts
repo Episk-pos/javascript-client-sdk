@@ -90,8 +90,12 @@ export const Permission = {
   /// Mention a role
   MentionRoles: 2n ** 38n,
 
+  // * Event permissions
+  /// Manage scheduled events
+  ManageEvents: 2n ** 39n,
+
   // * Misc. permissions
-  // % Bits 39 to 52: free area
+  // % Bits 40 to 52: free area
   // % Bits 53 to 64: do not use
 
   // * Grant all permissions
