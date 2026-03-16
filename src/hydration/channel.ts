@@ -79,7 +79,7 @@ export const channelHydration: Hydrate<Merge<APIChannel>, HydratedChannel> = {
     voice: (channel) =>
       !!channel.voice || channel.channel_type === 'DirectMessage' || channel.channel_type === 'Group' ? ({
         maxUsers: channel.voice?.max_users || undefined,
-        isStage: channel.voice?.is_stage || false,
+        isStage: (channel.voice as Record<string, unknown>)?.is_stage === true,
       }) : undefined,
   },
   initialHydration: () => ({
