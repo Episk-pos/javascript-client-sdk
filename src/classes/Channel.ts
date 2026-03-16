@@ -337,6 +337,13 @@ export class Channel {
   }
 
   /**
+   * Whether this is a stage channel
+   */
+  get isStage(): boolean {
+    return this.#collection.getUnderlyingObject(this.id).voice?.isStage === true;
+  }
+
+  /**
    * URL to the channel icon
    */
   get iconURL(): string | undefined {
