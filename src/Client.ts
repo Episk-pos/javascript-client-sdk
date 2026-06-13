@@ -34,7 +34,12 @@ import type { HydratedMessage } from "./hydration/message.js";
 import type { HydratedServer } from "./hydration/server.js";
 import type { HydratedServerMember } from "./hydration/serverMember.js";
 import type { HydratedUser } from "./hydration/user.js";
-import { RE_CHANNELS, RE_MENTIONS, RE_SPOILER } from "./lib/regex.js";
+import {
+  RE_CHANNELS,
+  RE_CUSTOM_EMOJI,
+  RE_MENTIONS,
+  RE_SPOILER,
+} from "./lib/regex.js";
 
 export type Session = { _id: string; token: string; user_id: string } | string;
 
@@ -188,6 +193,9 @@ export class Client extends AsyncEventEmitter<Events> {
   readonly ready: Accessor<boolean>;
   #setReady: Setter<boolean>;
 
+  readonly configured: Accessor<boolean>;
+  #setConfigured: Setter<boolean>;
+
   readonly connectionFailureCount: Accessor<number>;
   #setConnectionFailureCount: Setter<number>;
   #reconnectTimeout: number | undefined;
@@ -239,6 +247,14 @@ export class Client extends AsyncEventEmitter<Events> {
       baseURL: this.options.baseURL,
     });
 
+    const [configured, setConfigured] = createSignal(
+      configuration !== undefined,
+    );
+    this.configured = configured;
+    this.#setConfigured = setConfigured;
+
+    this.#fetchConfiguration();
+
     const [ready, setReady] = createSignal(false);
     this.ready = ready;
     this.#setReady = setReady;
@@ -279,7 +295,7 @@ export class Client extends AsyncEventEmitter<Events> {
             this.#reconnectTimeout = setTimeout(
               () => this.connect(),
               this.options.retryDelayFunction(this.connectionFailureCount()) *
-              1e3,
+                1e3,
             ) as never;
 
             this.#setConnectionFailureCount((count) => count + 1);
@@ -328,6 +344,7 @@ export class Client extends AsyncEventEmitter<Events> {
   async #fetchConfiguration(): Promise<void> {
     if (!this.configuration) {
       this.configuration = await this.api.get("/");
+      this.#setConfigured(true);
     }
   }
 
@@ -403,6 +420,118 @@ export class Client extends AsyncEventEmitter<Events> {
 
         return sub;
       })
+      .replace(RE_CUSTOM_EMOJI, (sub: string, id: string) => {
+        const emoji = this.emojis.get(id as string);
+
+        if (emoji) {
+          return `:${emoji.name}:`;
+        }
+
+        return sub;
+      })
+      .replace(RE_SPOILER, "<spoiler>");
+  }
+
+  /**
+   * Prepare a markdown-based message to be displayed to the user as plain text. This method will fetch each user or channel if they are missing. Useful for serviceworkers.
+   * @param source Source markdown text
+   * @returns Modified plain text
+   */
+  async markdownToTextFetch(source: string): Promise<string> {
+    // Get all user matches, create a map to dedupe
+    const userMatches = Object.fromEntries(
+      Array.from(source.matchAll(RE_MENTIONS), (match) => {
+        return [match[0], match[1]];
+      }),
+    );
+
+    // Get all channel matches, create a map to dedupe
+    const channelMatches = Object.fromEntries(
+      Array.from(source.matchAll(RE_CHANNELS), (match) => {
+        return [match[0], match[1]];
+      }),
+    );
+
+    // Get all custom emoji matches, create a map to dedupe
+    const customEmojiMatches = Object.fromEntries(
+      Array.from(source.matchAll(RE_CUSTOM_EMOJI), (match) => {
+        return [match[0], match[1]];
+      }),
+    );
+
+    // Send requests to replace user ids
+    const userReplacementPromises = Object.keys(userMatches).map(
+      async (key) => {
+        const substr = userMatches[key];
+        if (substr) {
+          try {
+            const user = await this.users.fetch(substr);
+            if (user) {
+              return [key, `@${user.username}`];
+            }
+          } catch {
+            // If the fetch fails, just show the match as a default
+            return [key, key];
+          }
+        }
+
+        return [key, key];
+      },
+    );
+
+    // Send requests to replace channel ids
+    const channelReplacementPromises = Object.keys(channelMatches).map(
+      async (key) => {
+        const substr = channelMatches[key];
+        if (substr) {
+          try {
+            const channel = await this.channels.fetch(substr);
+            if (channel) {
+              return [key, `#${channel.displayName}`];
+            }
+          } catch {
+            // If the fetch fails, just show the match as a default
+            return [key, key];
+          }
+        }
+
+        return [key, key];
+      },
+    );
+
+    // Send requests to replace custom emojis
+    const customEmojiReplacementPromises = Object.keys(customEmojiMatches).map(
+      async (key) => {
+        const substr = customEmojiMatches[key];
+        if (substr) {
+          try {
+            const emoji = await this.emojis.fetch(substr);
+            if (emoji) {
+              return [key, `:${emoji.name}:`];
+            }
+          } catch {
+            // If the fetch fails, just show the match as a default
+            return [key, key];
+          }
+        }
+
+        return [key, key];
+      },
+    );
+
+    // Await for all promises to get the strings to replace with.
+    const replacements = await Promise.all([
+      ...userReplacementPromises,
+      ...channelReplacementPromises,
+      ...customEmojiReplacementPromises,
+    ]);
+
+    const replacementsMap = Object.fromEntries(replacements);
+
+    return source
+      .replace(RE_MENTIONS, (match) => replacementsMap[match])
+      .replace(RE_CHANNELS, (match) => replacementsMap[match])
+      .replace(RE_CUSTOM_EMOJI, (match) => replacementsMap[match])
       .replace(RE_SPOILER, "<spoiler>");
   }
 

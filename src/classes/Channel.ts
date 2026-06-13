@@ -177,8 +177,8 @@ export class Channel {
   get recipient(): User | undefined {
     return this.type === "DirectMessage"
       ? this.recipients?.find(
-        (user) => user?.id !== this.#collection.client.user!.id,
-      )
+          (user) => user?.id !== this.#collection.client.user!.id,
+        )
       : undefined;
   }
 
@@ -796,6 +796,13 @@ export class Channel {
       `/channels/${this.id as ""}/permissions/${role_id as ""}`,
       { permissions: permissions as never },
     );
+  }
+
+  /**
+   * Get slowmode value for the channel
+   */
+  get slowmode(): number {
+    return this.#collection.getUnderlyingObject(this.id).slowmode ?? 0;
   }
 
   /**

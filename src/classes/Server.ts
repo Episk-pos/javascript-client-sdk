@@ -136,9 +136,10 @@ export class Server {
    * Channels
    */
   get channels(): Channel[] {
-    return [
-      ...this.#collection.getUnderlyingObject(this.id).channelIds.values(),
-    ]
+    const channelIds = this.#collection.getUnderlyingObject(this.id).channelIds;
+    if (!channelIds) return [];
+
+    return [...channelIds.values()]
       .map((id) => this.#collection.client.channels.get(id)!)
       .filter((x) => x);
   }
@@ -269,14 +270,7 @@ export class Server {
    * ranking roles. This is dictated by the "rank" property
    * which is smaller for higher priority roles.
    */
-  get orderedRoles(): {
-    name: string;
-    permissions: { a: bigint; d: bigint };
-    colour?: string | null;
-    hoist?: boolean;
-    rank?: number;
-    id: string;
-  }[] {
+  get orderedRoles(): ServerRole[] {
     const roles = this.roles;
     return roles
       ? [...roles.values()].sort((a, b) => (a.rank || 0) - (b.rank || 0))
@@ -338,6 +332,7 @@ export class Server {
    * Permission the currently authenticated user has against this server
    */
   get permission(): bigint {
+    if (!this.$exists) return 0n;
     return calculatePermission(this.#collection.client, this);
   }
 
